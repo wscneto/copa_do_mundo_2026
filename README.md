@@ -77,7 +77,11 @@ Projeto completo em C++ com OpenGL (freeglut/GLUT), com tema da Copa do Mundo FI
 - `include/Vec2.h`: utilitario 2D
 - `include/AudioSystem.h`: interface de audio
 - `include/Game.h`: estado do jogo e API
-- `src/Game.cpp`: renderizacao, simulacao, IA, input e HUD
+- `src/Game.cpp`: nucleo do jogo (ciclo, estado da partida, posse e callbacks)
+- `src/GameInput.cpp`: input do jogador e acoes de passe/chute/troca
+- `src/GameSimulation.cpp`: fisica da bola e IA dos jogadores
+- `src/GameRender.cpp`: renderizacao do estadio, HUD e overlays
+- `src/GameInternal.h`: utilitarios internos compartilhados entre os modulos do jogo
 - `src/AudioSystem.cpp`: OpenAL + sons procedurais
 - `src/main.cpp`: ponto de entrada
 - `config/game.cfg`: ajuste externo de parametros de gameplay

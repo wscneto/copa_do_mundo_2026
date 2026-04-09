@@ -7,18 +7,28 @@
 #include "AudioSystem.h"
 #include "Vec2.h"
 
+/**
+ * @brief Identifies which side currently owns a player or possession.
+ */
 enum class TeamSide {
     A,
     B
 };
 
+/**
+ * @brief Runtime difficulty presets that tune AI behavior.
+ */
 enum class Difficulty {
     Easy,
     Medium,
     Hard
 };
 
+/**
+ * @brief Gameplay tuning values loaded from configuration.
+ */
 struct GameTuning {
+    // Match and movement tuning loaded from config/game.cfg.
     float matchDurationSeconds;
     float ballFriction;
     float dribbleFollow;
@@ -30,18 +40,25 @@ struct GameTuning {
     float dangerousShotSpeed;
 };
 
+/**
+ * @brief Physical state of the ball.
+ */
 struct Ball {
     Vec2 position;
     Vec2 velocity;
     float radius;
 };
 
+/**
+ * @brief Runtime state for a player in either team.
+ */
 struct Player {
     Vec2 position;
     Vec2 homePosition;
     float radius;
     float speed;
     TeamSide team;
+    // Team shape and AI behavior rely on these role flags.
     bool isGoalkeeper;
     bool isDefender;
     float jitterSeed;
@@ -49,8 +66,16 @@ struct Player {
 
 class Game {
 public:
+    /**
+     * @brief Creates a new match controller with default runtime state.
+     */
     Game();
 
+    /**
+     * @brief Boots GLUT, loads configuration, and starts the main loop.
+     * @param argc CLI argument count forwarded to GLUT.
+     * @param argv CLI arguments forwarded to GLUT.
+     */
     void run(int argc, char** argv);
 
 private:
