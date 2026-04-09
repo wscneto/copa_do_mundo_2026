@@ -12,6 +12,9 @@ find_package(OpenAL QUIET)
 add_executable(worldcup2026
     src/main.cpp
     src/Game.cpp
+    src/GameInput.cpp
+    src/GameSimulation.cpp
+    src/GameRender.cpp
     src/AudioSystem.cpp
 )
 
