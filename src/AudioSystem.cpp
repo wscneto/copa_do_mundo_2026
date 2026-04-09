@@ -1,6 +1,7 @@
 #include "AudioSystem.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <cmath>
 #include <cstdlib>
@@ -26,6 +27,12 @@ struct WavPcmData {
 
 float clamp01(float value) {
     return std::max(0.0f, std::min(1.0f, value));
+}
+
+void decayTimer(float& timer, float dt) {
+    if (timer > 0.0f) {
+        timer = std::max(0.0f, timer - dt);
+    }
 }
 
 float pseudoNoise(int seed) {
@@ -319,6 +326,20 @@ std::vector<short> generateKickThump() {
 
     return data;
 }
+
+#ifdef HAS_OPENAL
+void ensureLoopingSourcePlaying(unsigned int source) {
+    if (source == 0) {
+        return;
+    }
+
+    ALint state = 0;
+    alGetSourcei(source, AL_SOURCE_STATE, &state);
+    if (state != AL_PLAYING) {
+        alSourcePlay(source);
+    }
+}
+#endif
 }  // namespace
 
 AudioSystem::AudioSystem()
@@ -414,42 +435,21 @@ void AudioSystem::shutdown() {
 }
 
 void AudioSystem::update(float dt) {
-    if (kickCooldown_ > 0.0f) {
-        kickCooldown_ = std::max(0.0f, kickCooldown_ - dt);
-    }
-
-    if (cheerCooldown_ > 0.0f) {
-        cheerCooldown_ = std::max(0.0f, cheerCooldown_ - dt);
-    }
-
-    if (celebrationBoostTimer_ > 0.0f) {
-        celebrationBoostTimer_ = std::max(0.0f, celebrationBoostTimer_ - dt);
-    }
-
-    if (chanceBoostTimer_ > 0.0f) {
-        chanceBoostTimer_ = std::max(0.0f, chanceBoostTimer_ - dt);
-    }
+    decayTimer(kickCooldown_, dt);
+    decayTimer(cheerCooldown_, dt);
+    decayTimer(celebrationBoostTimer_, dt);
+    decayTimer(chanceBoostTimer_, dt);
 
     chantLfoPhase_ += dt * 1.75f;
 
 #ifdef HAS_OPENAL
-    if (initialized_ && ambienceSource_ != 0) {
-        ALint ambienceState = 0;
-        alGetSourcei(ambienceSource_, AL_SOURCE_STATE, &ambienceState);
-        if (ambienceState != AL_PLAYING) {
-            alSourcePlay(ambienceSource_);
-        }
-    }
-
-    if (initialized_ && chantSource_ != 0) {
-        ALint chantState = 0;
-        alGetSourcei(chantSource_, AL_SOURCE_STATE, &chantState);
-        if (chantState != AL_PLAYING) {
-            alSourcePlay(chantSource_);
-        }
+    if (initialized_) {
+        ensureLoopingSourcePlaying(ambienceSource_);
+        ensureLoopingSourcePlaying(chantSource_);
     }
 
     if (initialized_) {
+        // Boost ambience and chants from match context (danger + celebration timers).
         const float celebrationNorm = clamp01(celebrationBoostTimer_ / 2.8f);
         const float chanceNorm = clamp01(chanceBoostTimer_ / 1.1f);
 
