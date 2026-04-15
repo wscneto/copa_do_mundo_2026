@@ -264,4 +264,36 @@ void Game::updatePlayersAI(float dt) {
             pendingKickSound_ = true;
         }
     }
+
+    // Resolve collisions between players (hitboxes) so they don't overlap
+    for (int step = 0; step < 2; ++step) { // Small iteration count for stability
+        for (size_t i = 0; i < players_.size(); ++i) {
+            for (size_t j = i + 1; j < players_.size(); ++j) {
+                Player& p1 = players_[i];
+                Player& p2 = players_[j];
+
+                Vec2 delta = p1.position - p2.position;
+                const float distSq = delta.lengthSquared();
+                const float radiusSum = p1.radius + p2.radius;
+                const float minHurtDistanceSq = radiusSum * radiusSum;
+
+                if (distSq > 0.0001f && distSq < minHurtDistanceSq) {
+                    const float dist = std::sqrt(distSq);
+                    const float overlap = radiusSum - dist;
+                    const Vec2 normal = delta * (1.0f / dist);
+
+                    // Push each player equally away from the center of collision
+                    const Vec2 push = normal * (overlap * 0.5f);
+                    p1.position += push;
+                    p2.position -= push;
+
+                    // Enforce bounds after push to prevent clipping out of field
+                    p1.position.x = clampf(p1.position.x, -halfLength + 0.8f, halfLength - 0.8f);
+                    p1.position.y = clampf(p1.position.y, -halfWidth + 0.8f, halfWidth - 0.8f);
+                    p2.position.x = clampf(p2.position.x, -halfLength + 0.8f, halfLength - 0.8f);
+                    p2.position.y = clampf(p2.position.y, -halfWidth + 0.8f, halfWidth - 0.8f);
+                }
+            }
+        }
+    }
 }
