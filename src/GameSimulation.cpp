@@ -103,10 +103,6 @@ void Game::updatePlayersAI(float dt) {
     const bool hasKnownPossession = possessionActive_;
 
     for (size_t i = 0; i < players_.size(); ++i) {
-        if (static_cast<int>(i) == controlledPlayerIndex_) {
-            continue;
-        }
-
         Player& player = players_[i];
         const int roleSlot = static_cast<int>(i % 6);
         const float teamDirection = (player.team == TeamSide::A) ? 1.0f : -1.0f;
@@ -269,4 +265,3 @@ void Game::updatePlayersAI(float dt) {
         }
     }
 }
-

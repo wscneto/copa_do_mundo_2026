@@ -72,7 +72,7 @@ Análise de como o projeto atendeu aos requisitos funcionais.
     -   **Como foi cumprido:** A função `drawField()` em `src/GameRender.cpp` desenha um campo completo, com todas as marcações (áreas, círculo central, arcos) usando primitivas `GL_LINE_LOOP`, `GL_QUADS` e funções customizadas para arcos e círculos.
 
 -   **b) Crie uma bola - a bola deverá ser movimentada usando o teclado:**
-    -   **Como foi cumprido:** O critério foi superado. O jogador é movido pelo teclado (`src/GameInput.cpp`), e ele, por sua vez, interage com a bola através de uma mecânica de drible. A bola possui uma simulação de física própria em `updateBallPhysics`, com momento e atrito.
+    -   **Como foi cumprido:** O critério foi implementado de forma direta. A bola é movimentada diretamente pelo teclado (WASD/setas), e o jogador pode carregar e executar chutes. A física da bola, com momento e atrito, é gerenciada em `updateBallPhysics`.
 
 -   **c) Crie um placar:**
     -   **Como foi cumprido:** A função `checkGoalDetection()` detecta a entrada da bola no gol, atualiza as variáveis de placar (`scoreTeamA_`, `scoreTeamB_`) e chama `resetAfterGoal()` para reposicionar os jogadores e a bola. O placar é renderizado no HUD por `drawHud()`.
@@ -84,7 +84,7 @@ Análise de como o projeto atendeu aos requisitos funcionais.
     -   **Como foi cumprido:** O `AudioSystem` é um dos pontos altos. Ele usa OpenAL para áudio espacializado e, de forma criativa, gera os sons da torcida e cantos de forma procedural, eliminando a necessidade de arquivos de áudio externos. Ele reage a gols e chances perigosas.
 
 -   **h) Crie uma mecânica de movimentação dos jogadores atrás da bola:**
-    -   **Como foi cumprido:** A IA em `updatePlayersAI` é tática. Os jogadores não apenas seguem a bola; eles se posicionam em zonas, alternam entre comportamento de ataque e defesa, e têm papéis específicos (goleiro, defensor, atacante), criando uma simulação de time.
+    -   **Como foi cumprido:** A IA em `updatePlayersAI` é tática e agora controla **todos os jogadores** em campo. Os jogadores não apenas seguem a bola; eles se posicionam em zonas, alternam entre comportamento de ataque e defesa, e têm papéis específicos (goleiro, defensor, atacante), criando uma simulação de time completa.
 
 -   **i) Seja criativo e crie um item:**
     -   **Como foi cumprido:** Vários itens foram criados:
@@ -105,7 +105,7 @@ Breve visão geral de outros sistemas importantes.
 
 -   **Como foi implementado:** O projeto é bem estruturado, dividindo responsabilidades em múltiplos arquivos:
     -   `Game.cpp`: Gerencia o estado geral e o loop principal.
-    -   `GameInput.cpp`: Processa toda a entrada do usuário.
+    -   `GameInput.cpp`: Processa a entrada do usuário para controlar diretamente a bola e gerenciar o carregamento e execução de chutes.
     -   `GameSimulation.cpp`: Lida com a física da bola e a IA dos jogadores.
     -   `GameRender.cpp`: Responsável por todo o código de desenho com OpenGL.
     -   `AudioSystem.cpp`: Encapsula toda a lógica de som.

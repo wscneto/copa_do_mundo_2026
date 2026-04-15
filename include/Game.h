@@ -114,23 +114,18 @@ private:
     float goalFlashTimer_;
     bool nightMode_;
 
-    int previousTimeMs_;
-
+    int previousTimeMs_; // Internal timer state
     bool pendingKickSound_;
-    int controlledPlayerIndex_;
-    bool requestPass_;
-    bool requestShoot_;
-    bool requestSwitchPlayer_;
-    bool shootHeld_;
-    bool shootReleased_;
-
     float shotCharge_;
     float ballControlCooldown_;
     float crowdExcitement_;
     float matchTimeRemaining_;
     float possessionCooldown_;
-
     bool gameOver_;
+    Vec2 ballInputDirection_;
+    bool ballShootHeld_;
+    bool ballShootReleased_;
+    bool ballRequestShoot_;
     int sessionWinsA_;
     int sessionWinsB_;
     int sessionDraws_;
@@ -139,8 +134,6 @@ private:
     bool possessionActive_;
     Difficulty difficulty_;
     GameTuning tuning_;
-    Vec2 controlledAimDirection_;
-    int suggestedPassTargetIndex_;
 
     void initializeWorld();
     void initializePlayers();
@@ -150,8 +143,7 @@ private:
     void applyDifficultyPreset(Difficulty difficulty);
 
     void update(float dt);
-    void updateControlledPlayerFromInput(float dt);
-    void handleControlledPlayerActions();
+    void updateBallControl(float dt);
     void updateBallPhysics(float dt);
     void updatePlayersAI(float dt);
     void checkGoalDetection();
@@ -159,8 +151,6 @@ private:
     void updatePossessionState(float dt);
     void updateCrowdExcitement(float dt);
 
-    int pickBestPassTarget(const Vec2& passDirection) const;
-    bool computePassInterception(const Vec2& passFrom, const Vec2& passTo, Vec2& interceptionPoint) const;
     float pointToSegmentDistance(const Vec2& point, const Vec2& a, const Vec2& b) const;
     const char* difficultyName() const;
 

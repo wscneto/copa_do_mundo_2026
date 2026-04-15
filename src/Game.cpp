@@ -34,27 +34,23 @@ Game::Game()
       nightMode_(false),
       previousTimeMs_(0),
       pendingKickSound_(false),
-      controlledPlayerIndex_(0),
-      requestPass_(false),
-      requestShoot_(false),
-      requestSwitchPlayer_(false),
-      shootHeld_(false),
-      shootReleased_(false),
       shotCharge_(0.0f),
       ballControlCooldown_(0.0f),
       crowdExcitement_(0.0f),
       matchTimeRemaining_(180.0f),
       possessionCooldown_(0.0f),
       gameOver_(false),
+      ballInputDirection_(0.0f, 0.0f),
+      ballShootHeld_(false),
+      ballShootReleased_(false),
+      ballRequestShoot_(false),
       sessionWinsA_(0),
       sessionWinsB_(0),
       sessionDraws_(0),
       possessionTeam_(TeamSide::A),
-    possessionActive_(false),
+      possessionActive_(false),
       difficulty_(Difficulty::Medium),
-      tuning_{180.0f, 0.985f, 14.0f, 8.0f, 28.0f, 26.0f, 52.0f, 1.0f, 30.0f},
-      controlledAimDirection_(1.0f, 0.0f),
-      suggestedPassTargetIndex_(-1) {
+      tuning_{180.0f, 0.985f, 14.0f, 8.0f, 28.0f, 26.0f, 52.0f, 1.0f, 30.0f} {
 }
 
 void Game::run(int argc, char** argv) {
@@ -136,11 +132,6 @@ void Game::initializePlayers() {
         player.jitterSeed = static_cast<float>(i) * 1.11f;
         players_.push_back(player);
     }
-
-    controlledPlayerIndex_ = 5;
-    if (controlledPlayerIndex_ >= static_cast<int>(players_.size())) {
-        controlledPlayerIndex_ = 0;
-    }
 }
 
 void Game::resetAfterGoal() {
@@ -168,17 +159,13 @@ void Game::resetMatch() {
     possessionCooldown_ = 0.0f;
     ballControlCooldown_ = 0.0f;
     shotCharge_ = 0.0f;
-    suggestedPassTargetIndex_ = -1;
-    controlledAimDirection_ = Vec2(1.0f, 0.0f);
     possessionTeam_ = TeamSide::A;
     possessionActive_ = false;
     gameOver_ = false;
 
-    requestPass_ = false;
-    requestShoot_ = false;
-    requestSwitchPlayer_ = false;
-    shootHeld_ = false;
-    shootReleased_ = false;
+    ballRequestShoot_ = false;
+    ballShootHeld_ = false;
+    ballShootReleased_ = false;
 
     initializePlayers();
     ball_.position = Vec2(0.0f, 0.0f);
@@ -261,8 +248,7 @@ void Game::update(float dt) {
     updateMatchState(dt);
 
     if (!gameOver_) {
-        updateControlledPlayerFromInput(dt);
-        handleControlledPlayerActions();
+        updateBallControl(dt);
         updatePlayersAI(dt);
         updateBallPhysics(dt);
         updatePossessionState(dt);
@@ -371,129 +357,6 @@ void Game::updateCrowdExcitement(float dt) {
     }
 
     crowdExcitement_ = std::max(0.0f, crowdExcitement_ - dt * 0.45f);
-}
-
-int Game::pickBestPassTarget(const Vec2& passDirection) const {
-    if (controlledPlayerIndex_ < 0 || controlledPlayerIndex_ >= static_cast<int>(players_.size())) {
-        return -1;
-    }
-
-    const Player& controlled = players_[static_cast<size_t>(controlledPlayerIndex_)];
-    Vec2 forwardDir = passDirection;
-    if (forwardDir.lengthSquared() < 1e-6f) {
-        forwardDir = Vec2(1.0f, 0.0f);
-    }
-    forwardDir = forwardDir.normalized();
-
-    // Weighted heuristic: openness + lane safety + direction + progression.
-    float bestScore = -1e9f;
-    int bestIndex = -1;
-
-    for (size_t i = 0; i < players_.size(); ++i) {
-        if (static_cast<int>(i) == controlledPlayerIndex_) {
-            continue;
-        }
-
-        const Player& teammate = players_[i];
-        if (teammate.team != TeamSide::A || teammate.isGoalkeeper) {
-            continue;
-        }
-
-        Vec2 toTeammate = teammate.position - controlled.position;
-        const float distance = std::max(0.001f, toTeammate.length());
-        const Vec2 passDirNorm = toTeammate / distance;
-
-        const float directionalAlignment = dot2(passDirNorm, forwardDir);
-        const float directionScore = clampf((directionalAlignment + 1.0f) * 0.5f, 0.0f, 1.0f);
-
-        float nearestOpponentDist = 1e9f;
-        int nearbyOpponents = 0;
-        float laneRisk = 0.0f;
-
-        for (const Player& opponent : players_) {
-            if (opponent.team != TeamSide::B) {
-                continue;
-            }
-
-            const float distToReceiver = (opponent.position - teammate.position).length();
-            nearestOpponentDist = std::min(nearestOpponentDist, distToReceiver);
-            if (distToReceiver < 8.5f) {
-                ++nearbyOpponents;
-            }
-
-            const float laneDistance = pointToSegmentDistance(opponent.position, controlled.position, teammate.position);
-            const float projection = dot2(opponent.position - controlled.position, toTeammate) / (distance * distance);
-            if (projection > 0.12f && projection < 0.96f && laneDistance < 4.0f) {
-                laneRisk += (1.0f - laneDistance / 4.0f) * 0.40f;
-            }
-        }
-
-        const float openness = clampf((nearestOpponentDist - 2.0f) / 14.0f, 0.0f, 1.0f) - nearbyOpponents * 0.05f;
-        const float opennessScore = clampf(openness, 0.0f, 1.0f);
-        const float laneSafety = 1.0f - clampf(laneRisk, 0.0f, 1.0f);
-
-        const float preferredDistance = 14.0f;
-        const float distanceScore = clampf(1.0f - std::abs(distance - preferredDistance) / 16.0f, 0.0f, 1.0f);
-
-        const float progress = teammate.position.x - controlled.position.x;
-        const float progressScore = clampf((progress + 12.0f) / 28.0f, 0.0f, 1.0f);
-
-        // Pass prioritizes open teammates but still follows player aiming direction.
-        float score =
-            opennessScore * 3.0f +
-            directionScore * 2.2f +
-            laneSafety * 2.4f +
-            distanceScore * 0.8f +
-            progressScore * 0.6f;
-
-        if (directionalAlignment < -0.35f) {
-            score -= 1.1f;
-        }
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestIndex = static_cast<int>(i);
-        }
-    }
-
-    return bestIndex;
-}
-
-bool Game::computePassInterception(const Vec2& passFrom, const Vec2& passTo, Vec2& interceptionPoint) const {
-    const Vec2 segment = passTo - passFrom;
-    const float segmentLengthSq = segment.lengthSquared();
-    if (segmentLengthSq < 1e-5f) {
-        return false;
-    }
-
-    float closestProjection = 2.0f;
-    bool intercepted = false;
-
-    // Pick the earliest opponent projection along the passing lane.
-    for (const Player& opponent : players_) {
-        if (opponent.team != TeamSide::B) {
-            continue;
-        }
-
-        const float distanceToLane = pointToSegmentDistance(opponent.position, passFrom, passTo);
-        if (distanceToLane > 1.45f) {
-            continue;
-        }
-
-        const float projection = dot2(opponent.position - passFrom, segment) / segmentLengthSq;
-        if (projection < 0.18f || projection > 0.95f) {
-            continue;
-        }
-
-        if (projection < closestProjection) {
-            closestProjection = projection;
-            const Vec2 lanePoint = passFrom + segment * projection;
-            interceptionPoint = lanePoint + (opponent.position - lanePoint) * 0.35f;
-            intercepted = true;
-        }
-    }
-
-    return intercepted;
 }
 
 float Game::pointToSegmentDistance(const Vec2& point, const Vec2& a, const Vec2& b) const {

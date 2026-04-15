@@ -12,10 +12,8 @@ Projeto completo em C++ com OpenGL (freeglut/GLUT), com tema da Copa do Mundo FI
 - Dois gols com estrutura e rede sugerida por linhas
 
 2. Jogador controlavel + bola fisica
-- Controle de um jogador do Team A com WASD ou setas
-- Troca de jogador com TAB apenas sem posse, sempre para o jogador mais proximo da bola
-- Passe inteligente com E (alvo baseado na direcao) e possibilidade de interceptacao
-- Chute carregavel (segurar SPACE, soltar para chutar)
+- Controle direto da bola com WASD ou setas
+- Chute carregavel da bola (segurar SPACE, soltar para chutar)
 - Dominio e conducao de bola com primeira dominada mais natural
 - Bola com momentum e atrito
 - Bola respeita limites do campo, com excecao da boca do gol
@@ -27,7 +25,7 @@ Projeto completo em C++ com OpenGL (freeglut/GLUT), com tema da Copa do Mundo FI
 - Atualizacao de placar e reset para o centro
 - Flash visual e texto de comemoracao (GOOOOOL)
 
-4. Jogadores (duas equipes)
+4. Jogadores (duas equipes, ambos controlados por IA)
 - Dois times com cores distintas
 - Goleiro, defensores e atacantes em cada lado
 - Posicoes iniciais em metades opostas
@@ -120,9 +118,8 @@ cmake --build build -j
 
 ## Controles
 
-- `W A S D` ou setas: movimentar jogador selecionado
-- `TAB`: trocar jogador controlado (Team A)
-- `E`: passe (direcional, com risco de interceptacao)
+- `W A S D` ou setas: movimentar a bola
+- `E`: (removido)
 - `SPACE`: segurar para carregar, soltar para chutar
 - `1`, `2`, `3`: dificuldade (easy, medium, hard)
 - `N`: alternar Dia/Noite

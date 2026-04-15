@@ -425,15 +425,6 @@ void Game::drawPlayers() const {
         glVertex2f(player.position.x + faceDir.x * player.radius * 1.25f, player.position.y + faceDir.y * player.radius * 1.25f);
         glEnd();
 
-        if (static_cast<int>(i) == controlledPlayerIndex_) {
-            glColor3f(1.0f, 0.95f, 0.18f);
-            drawCircleOutline(player.position, player.radius + 0.30f, 30, 2.2f);
-        }
-
-        if (static_cast<int>(i) == suggestedPassTargetIndex_) {
-            glColor3f(0.95f, 1.0f, 0.40f);
-            drawCircleOutline(player.position, player.radius + 0.48f, 28, 1.8f);
-        }
     }
 }
 
@@ -452,10 +443,10 @@ void Game::drawHud() const {
     std::ostringstream clockStream;
     clockStream << std::setfill('0') << std::setw(2) << minutes << ":" << std::setw(2) << seconds;
     drawText(-2.0f, viewTop_ - 9.4f, "TIME " + clockStream.str());
-
-    drawText(viewLeft_ + 2.0f, viewTop_ - 5.4f, "WASD / Arrows: mover jogador");
+    
+    drawText(viewLeft_ + 2.0f, viewTop_ - 5.4f, "WASD / Arrows: mover bola");
     drawText(viewLeft_ + 2.0f, viewTop_ - 8.0f, "Hold SPACE: carregar chute | soltar: chutar");
-    drawText(viewLeft_ + 2.0f, viewTop_ - 10.6f, "E: passe | TAB: mais perto (sem posse) | 1/2/3: dificuldade");
+    drawText(viewLeft_ + 2.0f, viewTop_ - 10.6f, "1/2/3: dificuldade");
     drawText(viewLeft_ + 2.0f, viewTop_ - 13.2f, "N: day/night | R: reiniciar partida | ESC: sair");
 
     const std::string possessionText =
@@ -602,4 +593,3 @@ void Game::drawText(float x, float y, const std::string& text) const {
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
     }
 }
-
