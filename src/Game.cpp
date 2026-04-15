@@ -16,8 +16,8 @@ using namespace game_internal;
 Game* Game::instance_ = nullptr;
 
 Game::Game()
-    : windowWidth_(1280),
-      windowHeight_(720),
+    : windowWidth_(1920),
+      windowHeight_(1080),
       viewLeft_(-80.0f),
       viewRight_(80.0f),
       viewBottom_(-45.0f),
