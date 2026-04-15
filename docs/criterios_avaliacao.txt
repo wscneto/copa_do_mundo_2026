@@ -1,0 +1,9 @@
+a) Desenhe um Campo de Futebol: retas/circunferências, etc;
+b) Crie uma bola - a bola deverá ser movimentada usando o teclado;
+c) Crie um placar - toda vez que a bola passar da linha do Gol, o placar deverá ser atualizado; e a bola deverá aparecer no meio do campo;
+e) Crie os jogadores e a torcida (liberado o uso de ferramentas (Blender, etc) para este requisito;
+f) Crie a Torcida
+g) Incluir som;
+h) Crie uma mecanica de movimentação dos jogadores atrás da bola (usar criatividade!);
+i) Seja criativo e crie um item;
+j) Realismo e Qualidade; 
