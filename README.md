@@ -119,7 +119,6 @@ cmake --build build -j
 ## Controles
 
 - `W A S D` ou setas: movimentar a bola
-- `E`: (removido)
 - `SPACE`: segurar para carregar, soltar para chutar
 - `1`, `2`, `3`: dificuldade (easy, medium, hard)
 - `N`: alternar Dia/Noite
