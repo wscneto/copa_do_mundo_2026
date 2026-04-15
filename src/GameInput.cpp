@@ -40,9 +40,10 @@ void Game::updateBallControl(float dt) {
 
     // Apply direct input to the ball's velocity if not charging a shot
     if (ballInputDirection_.lengthSquared() > 0.0f && !ballShootHeld_) {
-        ball_.velocity += ballInputDirection_ * (tuning_.dribbleCarrySpeed * 0.8f * dt);
+        const float controlAcceleration = tuning_.dribbleCarrySpeed * 2.4f;
+        ball_.velocity += ballInputDirection_ * (controlAcceleration * dt);
         // Cap ball speed from direct input
-        const float maxInputSpeed = tuning_.dribbleCarrySpeed * 1.5f;
+        const float maxInputSpeed = tuning_.dribbleCarrySpeed * 2.2f;
         if (ball_.velocity.lengthSquared() > maxInputSpeed * maxInputSpeed) {
             ball_.velocity = ball_.velocity.normalized() * maxInputSpeed;
         }
