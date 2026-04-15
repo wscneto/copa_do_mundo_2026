@@ -59,8 +59,8 @@ void Game::render() {
 }
 
 void Game::configureProjection() {
-    const float baseWidth = FIELD_LENGTH + 46.0f;
-    const float baseHeight = FIELD_WIDTH + 36.0f;
+    const float baseWidth = FIELD_LENGTH + 74.0f;
+    const float baseHeight = FIELD_WIDTH + 80.0f;
     const float desiredAspect = baseWidth / baseHeight;
     const float currentAspect = static_cast<float>(windowWidth_) / static_cast<float>(windowHeight_);
 
@@ -88,10 +88,28 @@ void Game::drawBackgroundAndStands() const {
     const float halfLength = FIELD_LENGTH * 0.5f;
     const float halfWidth = FIELD_WIDTH * 0.5f;
 
-    const float stadiumLeft = -halfLength - 13.0f;
-    const float stadiumRight = halfLength + 13.0f;
-    const float stadiumBottom = -halfWidth - 13.0f;
-    const float stadiumTop = halfWidth + 13.0f;
+    // Inner ellipse is sized to fully contain the rectangular field corners.
+    const float innerRadiusX = halfLength + 17.5f;
+    const float innerRadiusY = halfWidth + 18.0f;
+    const float outerRadiusX = innerRadiusX + 18.0f;
+    const float outerRadiusY = innerRadiusY + 18.0f;
+
+    const int bowlSegments = 220;
+
+    // Draw the stadium floor (track/outer grass) so the sky/clear gap doesn't show
+    if (nightMode_) {
+        glColor3f(0.08f, 0.18f, 0.10f);
+    } else {
+        glColor3f(0.11f, 0.44f, 0.16f);
+    }
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(0.0f, 0.0f);
+    for (int i = 0; i <= bowlSegments; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(bowlSegments);
+        const float angle = t * 2.0f * PI;
+        glVertex2f(innerRadiusX * std::cos(angle), innerRadiusY * std::sin(angle));
+    }
+    glEnd();
 
     if (nightMode_) {
         glColor3f(0.17f, 0.19f, 0.23f);
@@ -99,26 +117,60 @@ void Game::drawBackgroundAndStands() const {
         glColor3f(0.78f, 0.78f, 0.76f);
     }
 
-    glBegin(GL_QUADS);
-    glVertex2f(stadiumLeft, stadiumBottom);
-    glVertex2f(stadiumRight, stadiumBottom);
-    glVertex2f(stadiumRight, stadiumTop);
-    glVertex2f(stadiumLeft, stadiumTop);
+    glBegin(GL_TRIANGLE_STRIP);
+    for (int i = 0; i <= bowlSegments; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(bowlSegments);
+        const float angle = t * 2.0f * PI;
+        const float c = std::cos(angle);
+        const float s = std::sin(angle);
+
+        glVertex2f(outerRadiusX * c, outerRadiusY * s);
+        glVertex2f(innerRadiusX * c, innerRadiusY * s);
+    }
+    glEnd();
+
+    glColor3f(nightMode_ ? 0.24f : 0.66f, nightMode_ ? 0.26f : 0.66f, nightMode_ ? 0.30f : 0.64f);
+    glLineWidth(1.8f);
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i < bowlSegments; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(bowlSegments);
+        const float angle = t * 2.0f * PI;
+        glVertex2f(innerRadiusX * std::cos(angle), innerRadiusY * std::sin(angle));
+    }
     glEnd();
 
     // Crowd colors pulse on goals and dangerous moments to reinforce match intensity.
     const float crowdBoost = (goalFlashTimer_ > 0.0f ? (0.45f * goalFlashTimer_) : 0.0f) + crowdExcitement_ * 0.5f;
 
-    for (int row = 0; row < 6; ++row) {
-        const float yBottom = halfWidth + 3.0f + static_cast<float>(row) * 1.35f;
-        const float yTop = yBottom + 1.0f;
+    const int rowCount = 12;
+    const int seatsPerRow = 240;
+    const float firstRowRadiusX = innerRadiusX + 1.4f;
+    const float firstRowRadiusY = innerRadiusY + 1.4f;
+    const float lastRowRadiusX = outerRadiusX - 1.5f;
+    const float lastRowRadiusY = outerRadiusY - 1.5f;
 
-        for (int col = 0; col < 96; ++col) {
-            const float xLeft = -halfLength - 6.0f + static_cast<float>(col) * 1.25f;
-            const float xRight = xLeft + 0.95f;
+    for (int row = 0; row < rowCount; ++row) {
+        const float rowMix = static_cast<float>(row) / static_cast<float>(rowCount - 1);
+        const float seatRadiusX = firstRowRadiusX + (lastRowRadiusX - firstRowRadiusX) * rowMix;
+        const float seatRadiusY = firstRowRadiusY + (lastRowRadiusY - firstRowRadiusY) * rowMix;
 
-            const float n = hash01(row, col);
-            const bool yellowSeat = n > 0.46f;
+        const float seatWidth = 0.82f - rowMix * 0.10f;
+        const float seatHeight = 0.56f - rowMix * 0.08f;
+
+        for (int col = 0; col < seatsPerRow; ++col) {
+            const float t = static_cast<float>(col) / static_cast<float>(seatsPerRow);
+            const float angle = t * 2.0f * PI + static_cast<float>(row) * 0.02f;
+            const float c = std::cos(angle);
+            const float s = std::sin(angle);
+
+            const Vec2 center(seatRadiusX * c, seatRadiusY * s);
+            const Vec2 tangent(-s, c);
+            const Vec2 normal(c, s);
+            const Vec2 halfW = tangent * (seatWidth * 0.5f);
+            const Vec2 halfH = normal * (seatHeight * 0.5f);
+
+            const float n = hash01(row + 5, col + 37);
+            const bool yellowSeat = n > 0.48f;
 
             float r = 0.0f;
             float g = 0.0f;
@@ -136,60 +188,10 @@ void Game::drawBackgroundAndStands() const {
 
             glColor3f(clampf(r, 0.0f, 1.0f), clampf(g, 0.0f, 1.0f), clampf(b, 0.0f, 1.0f));
             glBegin(GL_QUADS);
-            glVertex2f(xLeft, yBottom);
-            glVertex2f(xRight, yBottom);
-            glVertex2f(xRight, yTop);
-            glVertex2f(xLeft, yTop);
-            glEnd();
-
-            glBegin(GL_QUADS);
-            glVertex2f(xLeft, -yBottom);
-            glVertex2f(xRight, -yBottom);
-            glVertex2f(xRight, -yTop);
-            glVertex2f(xLeft, -yTop);
-            glEnd();
-        }
-    }
-
-    for (int row = 0; row < 6; ++row) {
-        const float xLeftBand = halfLength + 3.0f + static_cast<float>(row) * 1.35f;
-        const float xRightBand = xLeftBand + 1.0f;
-
-        for (int col = 0; col < 60; ++col) {
-            const float yBottom = -halfWidth - 4.0f + static_cast<float>(col) * 1.25f;
-            const float yTop = yBottom + 0.95f;
-
-            const float n = hash01(row + 13, col + 77);
-            const bool yellowSeat = n > 0.52f;
-
-            float r = 0.0f;
-            float g = 0.0f;
-            float b = 0.0f;
-
-            if (yellowSeat) {
-                r = 0.86f + n * 0.10f + crowdBoost * 0.20f;
-                g = 0.74f + (1.0f - n) * 0.18f + crowdBoost * 0.14f;
-                b = 0.10f + std::sin(static_cast<float>(row - col) * 0.21f) * 0.04f + crowdBoost * 0.06f;
-            } else {
-                r = 0.11f + (1.0f - n) * 0.10f + crowdBoost * 0.08f;
-                g = 0.33f + n * 0.15f + crowdBoost * 0.12f;
-                b = 0.73f + n * 0.19f + crowdBoost * 0.25f;
-            }
-
-            glColor3f(clampf(r, 0.0f, 1.0f), clampf(g, 0.0f, 1.0f), clampf(b, 0.0f, 1.0f));
-
-            glBegin(GL_QUADS);
-            glVertex2f(xLeftBand, yBottom);
-            glVertex2f(xRightBand, yBottom);
-            glVertex2f(xRightBand, yTop);
-            glVertex2f(xLeftBand, yTop);
-            glEnd();
-
-            glBegin(GL_QUADS);
-            glVertex2f(-xLeftBand, yBottom);
-            glVertex2f(-xRightBand, yBottom);
-            glVertex2f(-xRightBand, yTop);
-            glVertex2f(-xLeftBand, yTop);
+            glVertex2f(center.x - halfW.x - halfH.x, center.y - halfW.y - halfH.y);
+            glVertex2f(center.x + halfW.x - halfH.x, center.y + halfW.y - halfH.y);
+            glVertex2f(center.x + halfW.x + halfH.x, center.y + halfW.y + halfH.y);
+            glVertex2f(center.x - halfW.x + halfH.x, center.y - halfW.y + halfH.y);
             glEnd();
         }
     }
@@ -429,12 +431,20 @@ void Game::drawPlayers() const {
 }
 
 void Game::drawHud() const {
-    // HUD anchors rely on dynamic view bounds so overlays remain stable on resize.
+    const float topPadding = 3.0f;
+    const float topHudY = viewTop_ - topPadding - 1.5f;     // Row 1
+    const float midHudY = viewTop_ - topPadding - 4.5f;     // Row 2
+    const float lowHudY = viewTop_ - topPadding - 7.5f;     // Row 3
+    const float botHudY = viewTop_ - topPadding - 10.5f;    // Row 4
+    
+    const float leftHudX = viewLeft_ + 2.0f;
+    const float rightHudX = viewRight_ - 30.0f;
+
     glColor3f(1.0f, 1.0f, 1.0f);
 
     std::ostringstream scoreStream;
-    scoreStream << "TEAM A " << scoreTeamA_ << "  x  " << scoreTeamB_ << " TEAM B";
-    drawText(-13.5f, viewTop_ - 5.4f, scoreStream.str());
+    scoreStream << "PLACAR  BRASIL " << scoreTeamA_ << "  x  " << scoreTeamB_ << " ARGENTINA";
+    drawText(-14.0f, topHudY, scoreStream.str());
 
     const int total = static_cast<int>(std::max(0.0f, matchTimeRemaining_));
     const int minutes = total / 60;
@@ -442,30 +452,30 @@ void Game::drawHud() const {
 
     std::ostringstream clockStream;
     clockStream << std::setfill('0') << std::setw(2) << minutes << ":" << std::setw(2) << seconds;
-    drawText(-2.0f, viewTop_ - 9.4f, "TIME " + clockStream.str());
-    
-    drawText(viewLeft_ + 2.0f, viewTop_ - 5.4f, "WASD / Arrows: mover bola");
-    drawText(viewLeft_ + 2.0f, viewTop_ - 8.0f, "Hold SPACE: carregar chute | soltar: chutar");
-    drawText(viewLeft_ + 2.0f, viewTop_ - 10.6f, "1/2/3: dificuldade");
-    drawText(viewLeft_ + 2.0f, viewTop_ - 13.2f, "N: day/night | R: reiniciar partida | ESC: sair");
+    drawText(-5.0f, midHudY, "TEMPO " + clockStream.str());
+
+    drawText(leftHudX, topHudY, "Mover bola: WASD / setas");
+    drawText(leftHudX, midHudY, "Chute: segure SPACE e solte");
+    drawText(leftHudX, lowHudY, "Dificuldade: 1 / 2 / 3");
+    drawText(leftHudX, botHudY, "N: dia/noite | R: reiniciar | ESC: sair");
 
     const std::string possessionText =
         possessionActive_ ?
-        ((possessionTeam_ == TeamSide::A) ? "POSSESSION: TEAM A" : "POSSESSION: TEAM B") :
-        "POSSESSION: LOOSE BALL";
-    drawText(viewRight_ - 38.0f, viewTop_ - 5.4f, possessionText);
+        ((possessionTeam_ == TeamSide::A) ? "POSSE: BRASIL" : "POSSE: ARGENTINA") :
+        "POSSE: BOLA LIVRE";
+    drawText(rightHudX, topHudY, possessionText);
 
-    drawText(viewRight_ - 38.0f, viewTop_ - 8.0f, std::string("DIFFICULTY: ") + difficultyName());
-    drawText(viewRight_ - 38.0f, viewTop_ - 10.6f, nightMode_ ? "MODE: NIGHT" : "MODE: DAY");
+    drawText(rightHudX, midHudY, std::string("NIVEL: ") + difficultyName());
+    drawText(rightHudX, lowHudY, nightMode_ ? "MODO: NOITE" : "MODO: DIA");
 
     std::ostringstream sessionStream;
-    sessionStream << "SESSION WINS A/B/D: " << sessionWinsA_ << "/" << sessionWinsB_ << "/" << sessionDraws_;
-    drawText(viewRight_ - 50.0f, viewTop_ - 13.2f, sessionStream.str());
+    sessionStream << "VITORIAS SESSAO A/B/E: " << sessionWinsA_ << "/" << sessionWinsB_ << "/" << sessionDraws_;
+    drawText(rightHudX, botHudY, sessionStream.str());
 
-    const float barX = -17.5f;
-    const float barY = viewTop_ - 13.1f;
-    const float barW = 35.0f;
-    const float barH = 1.8f;
+    const float barX = -8.5f;
+    const float barY = lowHudY - 2.0f;
+    const float barW = 17.0f;
+    const float barH = 1.4f;
 
     glColor3f(0.12f, 0.12f, 0.12f);
     glBegin(GL_QUADS);
@@ -492,11 +502,11 @@ void Game::drawHud() const {
     glVertex2f(barX, barY + barH);
     glEnd();
 
-    drawText(-6.5f, barY - 1.7f, "SHOT POWER");
+    drawText(-7.0f, barY + 2.0f, "POTENCIA DO CHUTE");
 
     if (goalFlashTimer_ > 0.0f) {
         glColor3f(1.0f, 0.95f, 0.2f);
-        drawText(-7.8f, viewTop_ - 16.4f, "GOOOOOL!");
+        drawText(-4.8f, barY - 2.5f, "GOOOOOL!");
     }
 }
 
@@ -544,17 +554,17 @@ void Game::drawGameOverOverlay() const {
     glDisable(GL_BLEND);
 
     glColor3f(1.0f, 1.0f, 1.0f);
-    drawText(-9.0f, 5.0f, "FULL TIME");
+    drawText(-9.0f, 5.0f, "FIM DO TEMPO");
 
     if (scoreTeamA_ > scoreTeamB_) {
-        drawText(-14.0f, 1.5f, "TEAM A WINS THE MATCH");
+        drawText(-14.0f, 1.5f, "BRASIL VENCE A PARTIDA");
     } else if (scoreTeamB_ > scoreTeamA_) {
-        drawText(-14.0f, 1.5f, "TEAM B WINS THE MATCH");
+        drawText(-14.0f, 1.5f, "ARGENTINA VENCE A PARTIDA");
     } else {
-        drawText(-8.0f, 1.5f, "DRAW GAME");
+        drawText(-8.0f, 1.5f, "JOGO EMPATADO");
     }
 
-    drawText(-17.5f, -2.2f, "Press R to start a new match");
+    drawText(-17.5f, -2.2f, "Aperte R para iniciar nova partida");
 }
 
 void Game::drawFilledCircle(const Vec2& center, float radius, int segments) const {
