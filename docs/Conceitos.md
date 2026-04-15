@@ -1,0 +1,41 @@
+# Base Técnico-Prática em OpenGL 2.0
+- Configuração e Compilação
+  - Linkagem de Bibliotecas (GCC, flags, includes)
+  - Bibliotecas da API (GL, GLU, GLUT, SDL)
+- Estrutura e Pipeline da API
+  - Máquina de Estados
+  - Inicialização de Janela e Display Mode
+  - Render Loop (glutMainLoop)
+  - Double Buffering (glutSwapBuffers)
+- Interação e Callbacks da GLUT
+  - glutDisplayFunc
+  - glutReshapeFunc
+  - glutKeyboardFunc
+  - glutMouseFunc
+  - glutIdleFunc
+- Desenho de Primitivas em Modo Imediato
+  - glBegin e glEnd
+  - GL_POINTS, GL_LINES, GL_LINE_STRIP, GL_LINE_LOOP
+  - GL_TRIANGLES, GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN
+  - GL_QUADS, GL_QUAD_STRIP, GL_POLYGON
+  - Primitivas 3D da GLUT (glutWireCube, glutSolidSphere)
+- Atributos e Cores
+  - Convenções de Nomenclatura (glVertex2i, glVertex3f)
+  - glColor3f (Aplicação de Cores por Vértice)
+  - glClearColor e glClear
+  - Depth Buffer (GL_DEPTH_BUFFER_BIT)
+- Manipulação de Matrizes e Câmera
+  - glMatrixMode (GL_PROJECTION, GL_MODELVIEW)
+  - glLoadIdentity
+  - gluOrtho2D
+  - gluPerspective
+  - gluLookAt
+- Transformações Geométricas na API
+  - glTranslatef
+  - glRotatef
+  - glScalef
+- Pilha de Matrizes (Hierarquia)
+  - glPushMatrix
+  - glPopMatrix
+- Otimização de Rendering
+  - Display Lists (glNewList, glEndList, glCallList)
