@@ -117,6 +117,14 @@ void Game::drawBackgroundAndStands() const {
         glColor3f(0.78f, 0.78f, 0.76f);
     }
 
+    // 2. Concrete Bowl with Radial and Directional Gradient for Fake Depth
+    // We use vertex colors to create a smooth gradient. Inner edge is darker (ambient occlusion),
+    // outer edge is lighter. We also apply a fake directional sun/stadium light.
+    struct Colors { float inR, inG, inB, outR, outG, outB; };
+    Colors bowlColors = nightMode_
+        ? Colors{0.14f, 0.16f, 0.20f, 0.36f, 0.40f, 0.46f}
+        : Colors{0.40f, 0.40f, 0.40f, 0.85f, 0.85f, 0.82f};
+
     glBegin(GL_TRIANGLE_STRIP);
     for (int i = 0; i <= bowlSegments; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(bowlSegments);
@@ -124,57 +132,83 @@ void Game::drawBackgroundAndStands() const {
         const float c = std::cos(angle);
         const float s = std::sin(angle);
 
+        // Directional light factor (light coming from top-left)
+        const float dirLight = (c * -0.7f + s * 0.7f) * 0.5f + 0.5f;
+        
+        // Outer Vertex (Lighter, top of the stands)
+        float lOut = 0.7f + 0.4f * dirLight;
+        glColor3f(bowlColors.outR * lOut, bowlColors.outG * lOut, bowlColors.outB * lOut);
         glVertex2f(outerRadiusX * c, outerRadiusY * s);
+        
+        // Inner Vertex (Darker, field level depression)
+        float lIn = 0.5f + 0.3f * dirLight;
+        glColor3f(bowlColors.inR * lIn, bowlColors.inG * lIn, bowlColors.inB * lIn);
         glVertex2f(innerRadiusX * c, innerRadiusY * s);
     }
     glEnd();
 
-    glColor3f(nightMode_ ? 0.24f : 0.66f, nightMode_ ? 0.26f : 0.66f, nightMode_ ? 0.30f : 0.64f);
-    glLineWidth(1.8f);
-    glBegin(GL_LINE_LOOP);
-    for (int i = 0; i < bowlSegments; ++i) {
+    // 3. Pitch Inner Wall (Creates a 3D drop from the stands to the grass)
+    Colors wallColors = nightMode_
+        ? Colors{0.07f, 0.09f, 0.12f, 0.15f, 0.18f, 0.22f}
+        : Colors{0.25f, 0.25f, 0.25f, 0.45f, 0.45f, 0.45f};
+
+    glBegin(GL_TRIANGLE_STRIP);
+    for (int i = 0; i <= bowlSegments; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(bowlSegments);
         const float angle = t * 2.0f * PI;
-        glVertex2f(innerRadiusX * std::cos(angle), innerRadiusY * std::sin(angle));
+        const float c = std::cos(angle);
+        const float s = std::sin(angle);
+
+        // Inner pitch-level vertex (Darkest)
+        glColor3f(wallColors.inR, wallColors.inG, wallColors.inB);
+        glVertex2f((innerRadiusX - 1.8f) * c, (innerRadiusY - 1.8f) * s);
+
+        // Outer stands-level vertex
+        glColor3f(wallColors.outR, wallColors.outG, wallColors.outB);
+        glVertex2f(innerRadiusX * c, innerRadiusY * s);
     }
     glEnd();
 
+    // 4. Dynamic Crowd with Depth and Perspective
     // Crowd colors pulse on goals and dangerous moments to reinforce match intensity.
     const float crowdBoost = (goalFlashTimer_ > 0.0f ? (0.45f * goalFlashTimer_) : 0.0f) + crowdExcitement_ * 0.5f;
 
-    const int rowCount = 12;
+    const int rowCount = 14;
     const int seatsPerRow = 240;
-    const float firstRowRadiusX = innerRadiusX + 1.4f;
-    const float firstRowRadiusY = innerRadiusY + 1.4f;
-    const float lastRowRadiusX = outerRadiusX - 1.5f;
-    const float lastRowRadiusY = outerRadiusY - 1.5f;
+    const float firstRowRadiusX = innerRadiusX + 1.0f;
+    const float firstRowRadiusY = innerRadiusY + 1.0f;
+    const float lastRowRadiusX = outerRadiusX - 2.5f;
+    const float lastRowRadiusY = outerRadiusY - 2.5f;
 
     for (int row = 0; row < rowCount; ++row) {
-        const float rowMix = static_cast<float>(row) / static_cast<float>(rowCount - 1);
+        // Perspective faking: rows pack closer together farther out to fake FOV depth
+        const float linearRow = static_cast<float>(row) / static_cast<float>(rowCount - 1);
+        const float rowMix = linearRow * (1.8f - linearRow); // gentle ease-out curve
+        
         const float seatRadiusX = firstRowRadiusX + (lastRowRadiusX - firstRowRadiusX) * rowMix;
         const float seatRadiusY = firstRowRadiusY + (lastRowRadiusY - firstRowRadiusY) * rowMix;
 
-        const float seatWidth = 0.82f - rowMix * 0.10f;
-        const float seatHeight = 0.56f - rowMix * 0.08f;
+        // Distant seats look smaller
+        const float seatWidth = 0.85f - linearRow * 0.25f;
+        const float seatHeight = 0.55f - linearRow * 0.15f;
 
         for (int col = 0; col < seatsPerRow; ++col) {
             const float t = static_cast<float>(col) / static_cast<float>(seatsPerRow);
-            const float angle = t * 2.0f * PI + static_cast<float>(row) * 0.02f;
+            const float angle = t * 2.0f * PI + static_cast<float>(row) * 0.025f; // stagger seats
             const float c = std::cos(angle);
             const float s = std::sin(angle);
 
             const Vec2 center(seatRadiusX * c, seatRadiusY * s);
             const Vec2 tangent(-s, c);
             const Vec2 normal(c, s);
+
             const Vec2 halfW = tangent * (seatWidth * 0.5f);
             const Vec2 halfH = normal * (seatHeight * 0.5f);
 
             const float n = hash01(row + 5, col + 37);
             const bool yellowSeat = n > 0.48f;
 
-            float r = 0.0f;
-            float g = 0.0f;
-            float b = 0.0f;
+            float r, g, b;
 
             if (yellowSeat) {
                 r = 0.88f + n * 0.08f + crowdBoost * 0.22f;
@@ -186,6 +220,17 @@ void Game::drawBackgroundAndStands() const {
                 b = 0.74f + n * 0.20f + crowdBoost * 0.26f;
             }
 
+            // Combine depth shade (dark near pitch, bright near top) and directional light
+            const float dirLight = (c * -0.7f + s * 0.7f) * 0.5f + 0.5f;
+            const float depthShade = 0.50f + 0.50f * linearRow;
+            const float finalLight = nightMode_
+                ? (depthShade * (0.92f + 0.42f * dirLight) + 0.08f)
+                : (depthShade * (0.75f + 0.35f * dirLight));
+            
+            r *= finalLight;
+            g *= finalLight;
+            b *= finalLight;
+
             glColor3f(clampf(r, 0.0f, 1.0f), clampf(g, 0.0f, 1.0f), clampf(b, 0.0f, 1.0f));
             glBegin(GL_QUADS);
             glVertex2f(center.x - halfW.x - halfH.x, center.y - halfW.y - halfH.y);
@@ -195,6 +240,26 @@ void Game::drawBackgroundAndStands() const {
             glEnd();
         }
     }
+
+    // 5. Volumetric Roof Canopy Shadow
+    // Draws a semi-transparent rim around the outer bowl to suggest an overarching roof.
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBegin(GL_TRIANGLE_STRIP);
+    const float shadowAlpha = nightMode_ ? 0.45f : 0.40f;
+    for (int i = 0; i <= bowlSegments; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(bowlSegments);
+        const float angle = t * 2.0f * PI;
+        const float c = std::cos(angle);
+        const float s = std::sin(angle);
+
+        glColor4f(0.0f, 0.0f, 0.0f, shadowAlpha);
+        glVertex2f(outerRadiusX * c, outerRadiusY * s);
+        glColor4f(0.0f, 0.0f, 0.0f, 0.0f);
+        glVertex2f((outerRadiusX - 5.5f) * c, (outerRadiusY - 5.5f) * s);
+    }
+    glEnd();
+    glDisable(GL_BLEND);
 }
 
 void Game::drawField() const {
@@ -440,20 +505,148 @@ void Game::drawHud() const {
     const float leftHudX = viewLeft_ + 2.0f;
     const float rightHudX = viewRight_ - 30.0f;
 
+    const float worldPerPixelX = (viewRight_ - viewLeft_) / static_cast<float>(windowWidth_);
+    const float worldPerPixelY = (viewTop_ - viewBottom_) / static_cast<float>(windowHeight_);
+    const float textHeightWorld = 18.0f * worldPerPixelY;
+    auto textWidthWorld = [&](const std::string& text) {
+        int widthPx = 0;
+        for (char c : text) {
+            widthPx += glutBitmapWidth(GLUT_BITMAP_HELVETICA_18, c);
+        }
+        return static_cast<float>(widthPx) * worldPerPixelX;
+    };
+
+    std::ostringstream scoreAStream;
+    scoreAStream << scoreTeamA_;
+    std::ostringstream scoreBStream;
+    scoreBStream << scoreTeamB_;
+
+    const std::string teamLeft = "BRASIL";
+    const std::string teamRight = "ARGENTINA";
+    const std::string scoreText = scoreAStream.str() + " - " + scoreBStream.str();
+
+    const float leftTeamWidth = textWidthWorld(teamLeft);
+    const float rightTeamWidth = textWidthWorld(teamRight);
+    const float scoreTextWidth = textWidthWorld(scoreText);
+
+    // ------------------------------------------------------------------
+    // TV-Style Scoreboard (Center Top)
+    // ------------------------------------------------------------------
+    const float indicatorWidth = 1.7f;
+    const float sbPadX = 1.8f;
+    const float sbPadY = 0.85f;
+    const float teamToScoreGap = 1.7f;
+    const float scoreBoxPadX = 1.3f;
+
+    const float scoreBoxWidth = std::max(10.8f, scoreTextWidth + scoreBoxPadX * 2.0f);
+    const float sbWidth = (indicatorWidth * 2.0f) + (sbPadX * 2.0f) + leftTeamWidth + rightTeamWidth + scoreBoxWidth + (teamToScoreGap * 2.0f);
+    const float sbHeight = textHeightWorld + sbPadY * 2.0f;
+    const float sbX = -sbWidth / 2.0f;
+    const float sbY = viewTop_ - 1.0f; 
+    const float sbTextY = sbY - sbPadY - textHeightWorld * 0.88f;
+
+    // Main dark background for the whole scoreboard
+    glColor3f(0.15f, 0.15f, 0.15f);
+    glBegin(GL_QUADS);
+    glVertex2f(sbX, sbY);
+    glVertex2f(sbX + sbWidth, sbY);
+    glVertex2f(sbX + sbWidth, sbY - sbHeight);
+    glVertex2f(sbX, sbY - sbHeight);
+    glEnd();
+
+    // Brazil Team Color Indicator (Green)
+    glColor3f(0.0f, 0.6f, 0.2f);
+    glBegin(GL_QUADS);
+    glVertex2f(sbX, sbY);
+    glVertex2f(sbX + indicatorWidth, sbY);
+    glVertex2f(sbX + indicatorWidth, sbY - sbHeight);
+    glVertex2f(sbX, sbY - sbHeight);
+    glEnd();
+
+    // Argentina Team Color Indicator (Light Blue)
+    glColor3f(0.4f, 0.7f, 1.0f);
+    glBegin(GL_QUADS);
+    glVertex2f(sbX + sbWidth - indicatorWidth, sbY);
+    glVertex2f(sbX + sbWidth, sbY);
+    glVertex2f(sbX + sbWidth, sbY - sbHeight);
+    glVertex2f(sbX + sbWidth - indicatorWidth, sbY - sbHeight);
+    glEnd();
+
+    // Score box background (darker) in the center
+    const float scoreBoxX = sbX + (sbWidth - scoreBoxWidth) / 2.0f;
+    glColor3f(0.05f, 0.05f, 0.05f);
+    glBegin(GL_QUADS);
+    glVertex2f(scoreBoxX, sbY);
+    glVertex2f(scoreBoxX + scoreBoxWidth, sbY);
+    glVertex2f(scoreBoxX + scoreBoxWidth, sbY - sbHeight);
+    glVertex2f(scoreBoxX, sbY - sbHeight);
+    glEnd();
+
+    // Border around scoreboard
+    glColor3f(0.8f, 0.8f, 0.8f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(sbX, sbY);
+    glVertex2f(sbX + sbWidth, sbY);
+    glVertex2f(sbX + sbWidth, sbY - sbHeight);
+    glVertex2f(sbX, sbY - sbHeight);
+    glEnd();
+
+    // Score texts
     glColor3f(1.0f, 1.0f, 1.0f);
 
-    std::ostringstream scoreStream;
-    scoreStream << "PLACAR  BRASIL " << scoreTeamA_ << "  x  " << scoreTeamB_ << " ARGENTINA";
-    drawText(-14.0f, topHudY, scoreStream.str());
+    // Team names and score are aligned with dynamic padding so text never overflows.
+    const float leftNameX = sbX + indicatorWidth + sbPadX;
+    const float rightNameX = sbX + sbWidth - indicatorWidth - sbPadX - rightTeamWidth;
+    const float scoreTextX = scoreBoxX + (scoreBoxWidth - scoreTextWidth) * 0.5f;
 
+    drawText(leftNameX, sbTextY, teamLeft);
+    drawText(rightNameX, sbTextY, teamRight);
+    drawText(scoreTextX, sbTextY, scoreText);
+
+    // ------------------------------------------------------------------
+    // TV-Style Match Clock
+    // ------------------------------------------------------------------
     const int total = static_cast<int>(std::max(0.0f, matchTimeRemaining_));
     const int minutes = total / 60;
     const int seconds = total % 60;
 
     std::ostringstream clockStream;
     clockStream << std::setfill('0') << std::setw(2) << minutes << ":" << std::setw(2) << seconds;
-    drawText(-5.0f, midHudY, "TEMPO " + clockStream.str());
 
+    const float timePadX = 1.1f;
+    const float timePadY = 0.55f;
+    const float timeGap = 0.65f;
+    const float timeBoxWidth = std::max(11.6f, textWidthWorld(clockStream.str()) + timePadX * 2.0f);
+    const float timeBoxHeight = textHeightWorld + timePadY * 2.0f;
+    const float timeBoxY = sbY - sbHeight - timeGap;
+    const float timeBoxX = sbX + (sbWidth - timeBoxWidth) / 2.0f;
+    const float timeTextY = timeBoxY - timePadY - textHeightWorld * 0.88f;
+
+    // Time box background
+    glColor3f(0.85f, 0.85f, 0.85f); // light grey box for time
+    glBegin(GL_QUADS);
+    glVertex2f(timeBoxX, timeBoxY);
+    glVertex2f(timeBoxX + timeBoxWidth, timeBoxY);
+    glVertex2f(timeBoxX + timeBoxWidth, timeBoxY - timeBoxHeight);
+    glVertex2f(timeBoxX, timeBoxY - timeBoxHeight);
+    glEnd();
+    
+    // Time box border
+    glColor3f(0.1f, 0.1f, 0.1f);
+    glLineWidth(1.5f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(timeBoxX, timeBoxY);
+    glVertex2f(timeBoxX + timeBoxWidth, timeBoxY);
+    glVertex2f(timeBoxX + timeBoxWidth, timeBoxY - timeBoxHeight);
+    glVertex2f(timeBoxX, timeBoxY - timeBoxHeight);
+    glEnd();
+
+    // Time text
+    glColor3f(0.0f, 0.0f, 0.0f); // dark text for time
+    drawText(timeBoxX + (timeBoxWidth - textWidthWorld(clockStream.str())) * 0.5f, timeTextY, clockStream.str());
+
+    glColor3f(1.0f, 1.0f, 1.0f);
     drawText(leftHudX, topHudY, "Mover bola: WASD / setas");
     drawText(leftHudX, midHudY, "Chute: segure SPACE e solte");
     drawText(leftHudX, lowHudY, "Dificuldade: 1 / 2 / 3");
@@ -502,7 +695,7 @@ void Game::drawHud() const {
     glVertex2f(barX, barY + barH);
     glEnd();
 
-    drawText(-7.0f, barY + 2.0f, "POTENCIA DO CHUTE");
+    drawText(-6.5f, barY + 2.0f, "POTENCIA DO CHUTE");
 
     if (goalFlashTimer_ > 0.0f) {
         glColor3f(1.0f, 0.95f, 0.2f);
