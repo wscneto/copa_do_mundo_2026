@@ -8,9 +8,10 @@
 using namespace game_internal;
 
 void Game::updateBallPhysics(float dt) {
-    // Integrate position first, then apply damping and boundary constraints.
+    // Semi-implicit style frame step for 2D motion: integrate, damp, then resolve constraints.
     ball_.position += ball_.velocity * dt;
 
+    // dt*60 normalizes damping so friction feels similar across frame rates.
     const float damping = std::pow(tuning_.ballFriction, dt * 60.0f);
     ball_.velocity *= damping;
 
@@ -58,7 +59,7 @@ void Game::updateBallPhysics(float dt) {
         Vec2(halfLength, goalHalf)
     };
 
-    // Posts are treated as small circular bumpers for believable rebounds.
+    // Posts are circular colliders; collision response uses reflection along contact normal.
     for (const Vec2& post : posts) {
         const Vec2 delta = ball_.position - post;
         const float minDistance = ball_.radius + 0.30f;
@@ -68,6 +69,7 @@ void Game::updateBallPhysics(float dt) {
             const Vec2 normal = delta / distance;
             ball_.position = post + normal * minDistance;
 
+            // Reflection: v' = v - 2*(v.n)*n, then damp to emulate energy loss.
             const float projection = dot2(ball_.velocity, normal);
             ball_.velocity -= normal * (2.0f * projection);
             ball_.velocity *= 0.78f;
@@ -104,6 +106,7 @@ void Game::updatePlayersAI(float dt) {
 
     for (size_t i = 0; i < players_.size(); ++i) {
         Player& player = players_[i];
+        // roleSlot maps each team to: goalkeeper, defenders, midfielders, striker.
         const int roleSlot = static_cast<int>(i % 6);
         const float teamDirection = (player.team == TeamSide::A) ? 1.0f : -1.0f;
         const bool attackingPhase = hasKnownPossession && (player.team == teamInPossession);
@@ -154,6 +157,7 @@ void Game::updatePlayersAI(float dt) {
                 zoneHalfY = 14.0f;
             }
 
+            // Tactical anchor before reacting to current ball context.
             Vec2 zoneCenter(
                 zoneXLocal * teamDirection + (attackingPhase ? 8.5f * teamDirection : -2.5f * teamDirection),
                 zoneY

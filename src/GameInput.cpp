@@ -16,6 +16,7 @@ void Game::updateBallControl(float dt) {
         ballControlCooldown_ = std::max(0.0f, ballControlCooldown_ - dt);
     }
 
+    // Keyboard state is converted into a 2D direction vector each frame.
     Vec2 movementDir(0.0f, 0.0f);
 
     if (keys_['w'] || specialKeys_[GLUT_KEY_UP]) {
@@ -58,7 +59,7 @@ void Game::updateBallControl(float dt) {
         possessionActive_ = false;
     }
 
-    // Handle shot charging and release for the ball
+    // Charge-and-release shot model: hold SPACE to fill power, release to kick.
     if (ballShootHeld_) {
         shotCharge_ = clampf(shotCharge_ + dt * 1.15f, 0.0f, 1.0f);
         possessionTeam_ = TeamSide::A; // Player is charging, so Team A has possession
@@ -80,7 +81,7 @@ void Game::updateBallControl(float dt) {
         }
         shotDirection = shotDirection.normalized();
 
-        // Apply some noise based on charge for less accurate shots
+        // Low charge has more angular error; full charge is stronger and straighter.
         const float errorFactor = (1.0f - charge) * 0.15f; // Reduced error for direct ball control
         const float deterministicNoise = std::sin(matchTimeSeconds_ * 8.3f);
         shotDirection.y += deterministicNoise * errorFactor;
@@ -122,7 +123,7 @@ void Game::handleKeyDown(unsigned char key) {
         ballShootHeld_ = true;
     }
 
-    // Keep other controls
+    // Runtime toggles used in demo: difficulty presets + reset + day/night.
     if (lower == '1') {
         applyDifficultyPreset(Difficulty::Easy);
     } else if (lower == '2') {

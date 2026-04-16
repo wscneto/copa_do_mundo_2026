@@ -238,7 +238,8 @@ void Game::applyDifficultyPreset(Difficulty difficulty) {
 }
 
 void Game::update(float dt) {
-    // Frame update order: state/input -> simulation -> meta (crowd/audio).
+    // Main game loop split in three phases:
+    // 1) state/input, 2) world simulation, 3) presentation/audio feedback.
     matchTimeSeconds_ += dt;
 
     if (goalFlashTimer_ > 0.0f) {
@@ -248,6 +249,7 @@ void Game::update(float dt) {
     updateMatchState(dt);
 
     if (!gameOver_) {
+        // Gameplay pipeline: human input -> AI decisions -> physics -> game rules.
         updateBallControl(dt);
         updatePlayersAI(dt);
         updateBallPhysics(dt);
@@ -278,7 +280,7 @@ void Game::checkGoalDetection() {
         return;
     }
 
-    // Goal only counts if the ball crossed the line within the goal mouth.
+    // Requirement (placar + gol): count only if the ball crosses the line inside goal mouth.
     if (ball_.position.x > halfLength + 0.45f) {
         ++scoreTeamA_;
         goalFlashTimer_ = 0.9f;
@@ -299,6 +301,7 @@ void Game::updateMatchState(float dt) {
         return;
     }
 
+    // Countdown is dt-based, so match duration is independent from machine speed.
     matchTimeRemaining_ = std::max(0.0f, matchTimeRemaining_ - dt);
     if (matchTimeRemaining_ <= 0.0f) {
         gameOver_ = true;
@@ -319,7 +322,7 @@ void Game::updatePossessionState(float dt) {
         possessionCooldown_ = std::max(0.0f, possessionCooldown_ - dt);
     }
 
-    // Possession belongs to the closest player that is inside control radius.
+    // Possession heuristic: closest player inside a control radius owns the ball.
     int controllingPlayerIndex = -1;
     float bestControlDistance = 1e9f;
 
@@ -348,7 +351,7 @@ void Game::updatePossessionState(float dt) {
 }
 
 void Game::updateCrowdExcitement(float dt) {
-    // Trigger dangerous chance reactions when a fast ball enters final third.
+    // Match drama model: high-speed shots near goal increase crowd intensity.
     if (ball_.velocity.length() > tuning_.dangerousShotSpeed && std::abs(ball_.position.y) < GOAL_WIDTH * 0.6f) {
         if (std::abs(ball_.position.x) > FIELD_LENGTH * 0.5f - 28.0f) {
             crowdExcitement_ = std::max(crowdExcitement_, 0.45f);

@@ -27,7 +27,7 @@ void Game::render() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Draw order is important for readability and fake depth layering.
+    // Painter-style ordering: back-to-front draw simulates depth in a pure 2D scene.
     drawBackgroundAndStands();
     drawField();
     drawBallSpotlight();
@@ -67,7 +67,7 @@ void Game::configureProjection() {
     float width = baseWidth;
     float height = baseHeight;
 
-    // Expand one axis to preserve field proportions regardless of window aspect.
+    // Aspect-ratio compensation keeps FIFA field proportions when window is resized.
     if (currentAspect > desiredAspect) {
         width = baseHeight * currentAspect;
     } else {
@@ -505,6 +505,7 @@ void Game::drawHud() const {
     const float leftHudX = viewLeft_ + 2.0f;
     const float rightHudX = viewRight_ - 30.0f;
 
+    // Convert font pixel metrics to world coordinates, so HUD layout scales with resolution.
     const float worldPerPixelX = (viewRight_ - viewLeft_) / static_cast<float>(windowWidth_);
     const float worldPerPixelY = (viewTop_ - viewBottom_) / static_cast<float>(windowHeight_);
     const float textHeightWorld = 18.0f * worldPerPixelY;

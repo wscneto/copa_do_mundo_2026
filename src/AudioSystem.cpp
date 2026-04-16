@@ -435,6 +435,7 @@ void AudioSystem::shutdown() {
 }
 
 void AudioSystem::update(float dt) {
+    // Time-based envelopes drive adaptive mix transitions smoothly.
     decayTimer(kickCooldown_, dt);
     decayTimer(cheerCooldown_, dt);
     decayTimer(celebrationBoostTimer_, dt);
@@ -449,7 +450,7 @@ void AudioSystem::update(float dt) {
     }
 
     if (initialized_) {
-        // Boost ambience and chants from match context (danger + celebration timers).
+        // Adaptive crowd mix: gameplay excitement modulates ambience/chant gains in real time.
         const float celebrationNorm = clamp01(celebrationBoostTimer_ / 2.8f);
         const float chanceNorm = clamp01(chanceBoostTimer_ / 1.1f);
 
@@ -465,6 +466,7 @@ void AudioSystem::update(float dt) {
 }
 
 void AudioSystem::playGoal() {
+    // Goal event raises short "celebration" envelopes used by the adaptive mixer.
     celebrationBoostTimer_ = std::max(celebrationBoostTimer_, 2.8f);
     chanceBoostTimer_ = std::max(chanceBoostTimer_, 1.2f);
 
@@ -556,6 +558,7 @@ bool AudioSystem::createBuffers() {
     WavPcmData externalCrowd;
     const bool usingExternalCrowd = loadExternalCrowdAudio(externalCrowd);
 
+    // External ambience is optional; procedural synthesis guarantees audio even with no assets.
     const std::vector<short> ambience = usingExternalCrowd ? externalCrowd.samples : generateCrowdAmbience();
     const int ambienceSampleRate = usingExternalCrowd ? externalCrowd.sampleRate : SAMPLE_RATE;
 
