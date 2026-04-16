@@ -31,3 +31,9 @@ worldcup2026
 *.swp
 *.swo
 .DS_Store
+
+# Patch files
+*.patch
+
+# Shell scripts
+*.sh
